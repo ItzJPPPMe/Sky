@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="background-grid" aria-hidden="true"></div>
+  <div class="background-glow" aria-hidden="true"></div>
+
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" role="img">
+          <defs>
+            <linearGradient id="skyGradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5eead4" />
+              <stop offset="55%" stop-color="#38bdf8" />
+              <stop offset="100%" stop-color="#818cf8" />
+            </linearGradient>
+          </defs>
+          <circle cx="24" cy="24" r="21" fill="none" stroke="url(#skyGradient)" stroke-width="2.5" />
+          <path d="M13 30c6-2 9-6 11-13 2 7 5 11 11 13-6 2-9 6-11 13-2-7-5-11-11-13z" fill="url(#skyGradient)" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Sky</h1>
+        <p>YouTube, Twitch ve Kick yayın tekrarlarını indir ve birleştir</p>
+      </div>
+    </div>
+
+    <div class="header-status">
+      <span id="serviceBadge" class="badge badge-pending">
+        <span class="badge-dot"></span>
+        <span id="serviceBadgeText">Bağlanıyor</span>
+      </span>
+      <button id="historyRefreshButton" class="icon-button" type="button" title="Geçmişi yenile">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 0-2.34 5.66" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" />
+          <path d="M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel download-panel">
+      <div class="panel-header">
+        <h2>Yeni indirme</h2>
+        <div id="platformChips" class="chip-row"></div>
+      </div>
+
+      <form id="downloadForm" novalidate>
+        <div class="field">
+          <label for="urlInput">Yayın bağlantısı</label>
+          <div class="input-shell">
+            <svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" />
+              <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" />
+            </svg>
+            <input id="urlInput" name="url" type="text" spellcheck="false" autocomplete="off"
+              placeholder="https://www.youtube.com/watch?v=..." />
+            <button id="pasteButton" class="ghost-button" type="button">Yapıştır</button>
+            <button id="resolveButton" class="ghost-button accent" type="button">Çözümle</button>
+          </div>
+          <p id="urlError" class="field-error" role="alert"></p>
+        </div>
+
+        <div id="resolutionCard" class="resolution-card" hidden>
+          <div class="resolution-head">
+            <div>
+              <h3 id="resolutionTitle">Yayın tekrarı</h3>
+              <p id="resolutionMeta" class="resolution-meta"></p>
+            </div>
+            <span id="resolutionBadge" class="state-pill state-idle">Bilinmiyor</span>
+          </div>
+          <p id="resolutionError" class="error-banner" hidden></p>
+        </div>
+
+        <div class="grid-two">
+          <div class="field">
+            <label for="qualitySelect">Kalite / Çözünürlük</label>
+            <div class="select-shell">
+              <select id="qualitySelect" name="quality" disabled>
+                <option value="">Önce bağlantıyı çözümleyin</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="languageSelect">Ses dili</label>
+            <div class="select-shell">
+              <select id="languageSelect" name="language" disabled>
+                <option value="">Orijinal ses</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="directoryInput">Kayıt klasörü</label>
+            <div class="input-shell">
+              <svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+              </svg>
+              <input id="directoryInput" name="directory" type="text" readonly placeholder="Varsayılan klasör" />
+              <button id="directoryButton" class="ghost-button" type="button">Gözat</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-two">
+          <div class="field">
+            <label for="fileNameInput">Dosya adı</label>
+            <div class="input-shell">
+              <input id="fileNameInput" name="fileName" type="text" spellcheck="false" placeholder="Otomatik" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="concurrencyInput">Eşzamanlı segment <span id="concurrencyValue" class="label-value">8</span>
+            </label>
+            <input id="concurrencyInput" name="concurrency" type="range" min="1" max="24" step="1" value="8" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="startButton" class="button button-primary" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4v11m0 0 4-4m-4 4-4-4" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+            <span>İndirmeyi Başlat</span>
+          </button>
+          <button id="pauseButton" class="button button-secondary" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="7" y="6" width="3.5" height="12" rx="1" fill="currentColor" />
+              <rect x="13.5" y="6" width="3.5" height="12" rx="1" fill="currentColor" />
+            </svg>
+            <span>Duraklat</span>
+          </button>
+          <button id="stopButton" class="button button-danger" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+            </svg>
+            <span>Durdur</span>
+          </button>
+        </div>
+      </form>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 4v12m0 0 5-5m-5 5-5-5" fill="none" stroke="currentColor" stroke-width="1.6"
+              stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h3>Aktif indirme yok</h3>
+        <p>Bir YouTube, Twitch, Kick ya da HLS bağlantısı yapıştırıp çözümleyin.</p>
+      </div>
+
+      <div id="progressPanel" class="progress-panel" hidden>
+        <div class="progress-head">
+          <div>
+            <h3 id="progressTitle">Yayın tekrarı</h3>
+            <p id="progressMeta" class="progress-meta">0 / 0 segment</p>
+          </div>
+          <span id="progressState" class="state-pill state-idle">Bekliyor</span>
+        </div>
+
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <span class="metric-label">Yüzde</span>
+            <strong id="metricPercent" class="metric-value">0.0%</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Hız</span>
+            <strong id="metricSpeed" class="metric-value">0 B/sn</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Kalan süre</span>
+            <strong id="metricEta" class="metric-value">--:--</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">İndirilen</span>
+            <strong id="metricSize" class="metric-value">0 B</strong>
+          </div>
+        </div>
+
+        <p id="progressWarning" class="warning-banner" hidden></p>
+        <p id="progressError" class="error-banner" hidden></p>
+      </div>
+    </section>
+
+    <section class="panel history-panel">
+      <div class="panel-header">
+        <h2>İndirme geçmişi</h2>
+        <button id="historyClearButton" class="ghost-button" type="button">Temizle</button>
+      </div>
+
+      <div id="historyList" class="history-list"></div>
+
+      <div id="historyEmpty" class="empty-state empty-state-compact">
+        <h3>Geçmiş boş</h3>
+        <p>Tamamlanan indirmeler burada listelenir.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span id="footerEndpoint">Sky</span>
+    <span id="footerTools">Araçlar denetleniyor</span>
+    <span id="footerOutput">Çıktı klasörü yükleniyor</span>
+  </footer>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="renderer.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,121 @@
+{
+  "name": "sky",
+  "productName": "Sky",
+  "version": "0.1.0",
+  "description": "YouTube, Twitch and Kick VOD downloader with a high speed HLS engine and an Electron interface.",
+  "license": "MIT",
+  "author": "Sky Contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sky-app/sky.git"
+  },
+  "homepage": "https://github.com/sky-app/sky#readme",
+  "bugs": {
+    "url": "https://github.com/sky-app/sky/issues"
+  },
+  "keywords": [
+    "electron",
+    "fsharp",
+    "hls",
+    "dash",
+    "youtube",
+    "twitch",
+    "kick",
+    "vod",
+    "downloader"
+  ],
+  "main": "frontend/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env SKY_ENV=development electron .",
+    "tools": "node scripts/tools.js",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "dotnet publish backend/Sky.fsproj -c Release -o dist/backend",
+    "build:frontend": "electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "app.sky.desktop",
+    "productName": "Sky",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "frontend/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/backend",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg.exe",
+          "to": "ffmpeg/ffmpeg.exe",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg",
+          "to": "ffmpeg/ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.utilities",
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg",
+          "to": "ffmpeg/ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "ffmpeg-static": "^5.3.0"
+  }
+}
