@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="dark" data-animations="full">
 
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*" />
+    content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://127.0.0.1:*; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sky</title>
   <link rel="stylesheet" href="styles.css" />
@@ -14,15 +14,27 @@
   <div class="background-grid" aria-hidden="true"></div>
   <div class="background-glow" aria-hidden="true"></div>
 
+  <div id="dropOverlay" class="drop-overlay" hidden>
+    <div class="drop-card">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 16V4m0 0 4 4m-4-4L8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round" />
+        <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" />
+      </svg>
+      <span>Bağlantıyı bırakın</span>
+    </div>
+  </div>
+
   <header class="app-header">
     <div class="brand">
       <div class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 48 48" role="img">
           <defs>
             <linearGradient id="skyGradient" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#5eead4" />
-              <stop offset="55%" stop-color="#38bdf8" />
-              <stop offset="100%" stop-color="#818cf8" />
+              <stop offset="0%" stop-color="var(--accent-soft)" />
+              <stop offset="55%" stop-color="var(--accent)" />
+              <stop offset="100%" stop-color="var(--accent-alt)" />
             </linearGradient>
           </defs>
           <circle cx="24" cy="24" r="21" fill="none" stroke="url(#skyGradient)" stroke-width="2.5" />
@@ -35,24 +47,56 @@
       </div>
     </div>
 
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="download" role="tab" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v11m0 0 4-4m-4 4-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" />
+          <path d="M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <span>İndirme</span>
+      </button>
+      <button class="tab" data-tab="queue" role="tab" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <span>Kuyruk</span>
+        <span id="queueCount" class="tab-badge" hidden>0</span>
+      </button>
+      <button class="tab" data-tab="history" role="tab" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 8v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" />
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+        <span>Geçmiş</span>
+      </button>
+      <button class="tab" data-tab="settings" role="tab" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+          <path d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.7-6.7-1.4 1.4M7.7 16.3l-1.4 1.4m12.4 0-1.4-1.4M7.7 7.7 6.3 6.3"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <span>Ayarlar</span>
+      </button>
+    </nav>
+
     <div class="header-status">
       <span id="serviceBadge" class="badge badge-pending">
         <span class="badge-dot"></span>
         <span id="serviceBadgeText">Bağlanıyor</span>
       </span>
-      <button id="historyRefreshButton" class="icon-button" type="button" title="Geçmişi yenile">
+      <button id="themeToggle" class="icon-button" type="button" title="Temayı değiştir (Ctrl+, )">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M20 11a8 8 0 1 0-2.34 5.66" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" />
-          <path d="M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" />
+          <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linejoin="round" />
         </svg>
       </button>
     </div>
   </header>
 
   <main class="layout">
-    <section class="panel download-panel">
+    <section id="panel-download" class="panel tab-panel is-active" role="tabpanel">
       <div class="panel-header">
         <h2>Yeni indirme</h2>
         <div id="platformChips" class="chip-row"></div>
@@ -63,10 +107,10 @@
           <label for="urlInput">Yayın bağlantısı</label>
           <div class="input-shell">
             <svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" />
-              <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" />
+              <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" />
+              <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" />
             </svg>
             <input id="urlInput" name="url" type="text" spellcheck="false" autocomplete="off"
               placeholder="https://www.youtube.com/watch?v=..." />
@@ -77,14 +121,17 @@
         </div>
 
         <div id="resolutionCard" class="resolution-card" hidden>
-          <div class="resolution-head">
-            <div>
-              <h3 id="resolutionTitle">Yayın tekrarı</h3>
-              <p id="resolutionMeta" class="resolution-meta"></p>
+          <img id="resolutionThumb" class="resolution-thumb" alt="" hidden />
+          <div class="resolution-body">
+            <div class="resolution-head">
+              <div>
+                <h3 id="resolutionTitle">Yayın tekrarı</h3>
+                <p id="resolutionMeta" class="resolution-meta"></p>
+              </div>
+              <span id="resolutionBadge" class="state-pill state-idle">Bilinmiyor</span>
             </div>
-            <span id="resolutionBadge" class="state-pill state-idle">Bilinmiyor</span>
+            <p id="resolutionError" class="error-banner" hidden></p>
           </div>
-          <p id="resolutionError" class="error-banner" hidden></p>
         </div>
 
         <div class="grid-two">
@@ -113,6 +160,15 @@
               </svg>
             </div>
           </div>
+        </div>
+
+        <div class="grid-two">
+          <div class="field">
+            <label for="fileNameInput">Dosya adı <span class="label-hint">boş bırakılırsa şablon kullanılır</span></label>
+            <div class="input-shell">
+              <input id="fileNameInput" name="fileName" type="text" spellcheck="false" placeholder="Otomatik" />
+            </div>
+          </div>
 
           <div class="field">
             <label for="directoryInput">Kayıt klasörü</label>
@@ -127,19 +183,9 @@
           </div>
         </div>
 
-        <div class="grid-two">
-          <div class="field">
-            <label for="fileNameInput">Dosya adı</label>
-            <div class="input-shell">
-              <input id="fileNameInput" name="fileName" type="text" spellcheck="false" placeholder="Otomatik" />
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="concurrencyInput">Eşzamanlı segment <span id="concurrencyValue" class="label-value">8</span>
-            </label>
-            <input id="concurrencyInput" name="concurrency" type="range" min="1" max="24" step="1" value="8" />
-          </div>
+        <div class="field">
+          <label for="concurrencyInput">Eşzamanlı segment <span id="concurrencyValue" class="label-value">8</span></label>
+          <input id="concurrencyInput" name="concurrency" type="range" min="1" max="32" step="1" value="8" />
         </div>
 
         <div class="actions">
@@ -166,18 +212,6 @@
           </button>
         </div>
       </form>
-
-      <div id="emptyState" class="empty-state">
-        <div class="empty-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 4v12m0 0 5-5m-5 5-5-5" fill="none" stroke="currentColor" stroke-width="1.6"
-              stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-          </svg>
-        </div>
-        <h3>Aktif indirme yok</h3>
-        <p>Bir YouTube, Twitch, Kick ya da HLS bağlantısı yapıştırıp çözümleyin.</p>
-      </div>
 
       <div id="progressPanel" class="progress-panel" hidden>
         <div class="progress-head">
@@ -211,15 +245,102 @@
           </div>
         </div>
 
+        <div class="chart-shell">
+          <canvas id="speedChart" height="72" aria-label="İndirme hızı grafiği"></canvas>
+          <span class="chart-empty" id="chartEmpty">Hız verisi bekleniyor</span>
+        </div>
+
         <p id="progressWarning" class="warning-banner" hidden></p>
         <p id="progressError" class="error-banner" hidden></p>
       </div>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 4v12m0 0 5-5m-5 5-5-5" fill="none" stroke="currentColor" stroke-width="1.6"
+              stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h3>Aktif indirme yok</h3>
+        <p>Bağlantıyı yapıştırın ya da pencereye sürükleyip bırakın.</p>
+      </div>
     </section>
 
-    <section class="panel history-panel">
+    <section id="panel-queue" class="panel tab-panel" role="tabpanel" hidden>
+      <div class="panel-header">
+        <h2>İndirme kuyruğu</h2>
+        <button id="queueClearButton" class="ghost-button" type="button">Tamamlananları temizle</button>
+      </div>
+      <div id="queueList" class="queue-list"></div>
+      <div id="queueEmpty" class="empty-state empty-state-compact">
+        <h3>Kuyruk boş</h3>
+        <p>Başlatılan işler burada listelenir.</p>
+      </div>
+    </section>
+
+    <section id="panel-history" class="panel tab-panel" role="tabpanel" hidden>
       <div class="panel-header">
         <h2>İndirme geçmişi</h2>
         <button id="historyClearButton" class="ghost-button" type="button">Temizle</button>
+      </div>
+
+      <div class="history-toolbar">
+        <div class="input-shell search-shell">
+          <svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2" />
+            <path d="m16 16 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          <input id="historySearch" type="text" spellcheck="false" placeholder="Geçmişte ara" />
+        </div>
+
+        <div class="select-shell compact-select">
+          <select id="historyPlatformFilter">
+            <option value="">Tüm platformlar</option>
+            <option value="YouTube">YouTube</option>
+            <option value="Twitch">Twitch</option>
+            <option value="Kick">Kick</option>
+            <option value="HLS">HLS</option>
+          </select>
+          <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+        </div>
+
+        <div class="select-shell compact-select">
+          <select id="historySort">
+            <option value="date-desc">En yeni</option>
+            <option value="date-asc">En eski</option>
+            <option value="size-desc">En büyük</option>
+            <option value="size-asc">En küçük</option>
+            <option value="title">Başlığa göre</option>
+          </select>
+          <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+        </div>
+
+        <div class="segmented" role="group" aria-label="Görünüm">
+          <button class="segment is-active" data-view="list" type="button" title="Liste">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 6h12M8 12h12M8 18h12" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" />
+              <circle cx="4" cy="6" r="1.4" fill="currentColor" />
+              <circle cx="4" cy="12" r="1.4" fill="currentColor" />
+              <circle cx="4" cy="18" r="1.4" fill="currentColor" />
+            </svg>
+          </button>
+          <button class="segment" data-view="grid" type="button" title="Izgara">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />
+              <rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />
+              <rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />
+              <rect x="13" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div id="historyList" class="history-list"></div>
@@ -229,15 +350,200 @@
         <p>Tamamlanan indirmeler burada listelenir.</p>
       </div>
     </section>
+
+    <section id="panel-settings" class="panel tab-panel" role="tabpanel" hidden>
+      <div class="panel-header">
+        <h2>Ayarlar</h2>
+        <div class="settings-actions">
+          <button id="settingsResetButton" class="ghost-button" type="button">Varsayılanlara dön</button>
+          <button id="settingsSaveButton" class="button button-primary compact" type="button">Kaydet</button>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <section class="settings-card">
+          <h3>Görünüm</h3>
+          <div class="field">
+            <label for="settingAccent">Vurgu rengi</label>
+            <div class="color-row">
+              <input id="settingAccent" type="color" value="#38bdf8" />
+              <input id="settingAccentText" type="text" spellcheck="false" value="#38bdf8" />
+              <div id="accentPresets" class="preset-row"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="settingTheme">Tema</label>
+            <div class="select-shell">
+              <select id="settingTheme">
+                <option value="dark">Koyu</option>
+                <option value="light">Açık</option>
+                <option value="system">Sistem</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="settingAnimations">Animasyon seviyesi</label>
+            <div class="select-shell">
+              <select id="settingAnimations">
+                <option value="full">Tam</option>
+                <option value="reduced">Azaltılmış</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <h3>İndirme</h3>
+
+          <div class="field">
+            <label for="settingConcurrency">Eşzamanlı segment <span id="settingConcurrencyValue" class="label-value">8</span></label>
+            <input id="settingConcurrency" type="range" min="1" max="64" step="1" value="8" />
+          </div>
+
+          <div class="field">
+            <label for="settingParallel">Aynı anda çalışan iş <span id="settingParallelValue" class="label-value">2</span></label>
+            <input id="settingParallel" type="range" min="1" max="8" step="1" value="2" />
+          </div>
+
+          <div class="field">
+            <label for="settingSpeed">Hız sınırı (KB/sn, 0 = sınırsız)</label>
+            <input id="settingSpeed" type="number" min="0" max="100000" step="128" value="0" />
+          </div>
+
+          <div class="field">
+            <label for="settingRetries">Yeniden deneme <span id="settingRetriesValue" class="label-value">3</span></label>
+            <input id="settingRetries" type="range" min="0" max="10" step="1" value="3" />
+          </div>
+
+          <div class="field">
+            <label for="settingTemplate">Dosya adı şablonu</label>
+            <input id="settingTemplate" type="text" spellcheck="false" value="{title}" />
+            <p class="hint">{title} · {platform} · {quality} · {date} · {time} · {ext}</p>
+          </div>
+        </section>
+
+        <section class="settings-card">
+          <h3>İçerik</h3>
+
+          <div class="field">
+            <label for="settingLanguage">Tercih edilen ses dili</label>
+            <div class="select-shell">
+              <select id="settingLanguage">
+                <option value="">Orijinal</option>
+                <option value="tr">Türkçe</option>
+                <option value="en">İngilizce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+                <option value="ar">Arapça</option>
+                <option value="ru">Rusça</option>
+                <option value="ja">Japonca</option>
+                <option value="ko">Korece</option>
+                <option value="hi">Hintçe</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="settingDirectory">Varsayılan klasör</label>
+            <div class="input-shell">
+              <input id="settingDirectory" type="text" readonly />
+              <button id="settingDirectoryButton" class="ghost-button" type="button">Gözat</button>
+            </div>
+          </div>
+
+          <label class="switch-row">
+            <input id="settingRemux" type="checkbox" checked />
+            <span class="switch"></span>
+            <span class="switch-label">HLS çıktısını MP4'e çevir</span>
+          </label>
+
+          <label class="switch-row">
+            <input id="settingOpenFolder" type="checkbox" />
+            <span class="switch"></span>
+            <span class="switch-label">Bitince klasörü aç</span>
+          </label>
+
+          <label class="switch-row">
+            <input id="settingNotifications" type="checkbox" checked />
+            <span class="switch"></span>
+            <span class="switch-label">Sistem bildirimi göster</span>
+          </label>
+
+          <label class="switch-row">
+            <input id="settingConfirm" type="checkbox" />
+            <span class="switch"></span>
+            <span class="switch-label">Başlatmadan önce onay iste</span>
+          </label>
+        </section>
+
+        <section class="settings-card">
+          <h3>Araçlar ve ağ</h3>
+
+          <div class="field">
+            <label for="settingYtDlp">yt-dlp yolu</label>
+            <input id="settingYtDlp" type="text" spellcheck="false" placeholder="Otomatik bulunur" />
+          </div>
+
+          <div class="field">
+            <label for="settingFfMpeg">ffmpeg yolu</label>
+            <input id="settingFfMpeg" type="text" spellcheck="false" placeholder="Otomatik bulunur" />
+          </div>
+
+          <div class="field">
+            <label for="settingProxy">HTTP vekil sunucusu</label>
+            <input id="settingProxy" type="text" spellcheck="false" placeholder="http://127.0.0.1:8080" />
+          </div>
+
+          <div class="field">
+            <label for="settingTimeout">İstek zaman aşımı (saniye)</label>
+            <input id="settingTimeout" type="number" min="5" max="300" step="5" value="30" />
+          </div>
+
+          <div class="field">
+            <label for="settingLivePoll">Canlı akış yoklama böleni</label>
+            <input id="settingLivePoll" type="number" min="1" max="10" step="1" value="2" />
+          </div>
+
+          <div class="field">
+            <label for="settingHistoryLimit">Geçmiş kayıt sınırı</label>
+            <input id="settingHistoryLimit" type="number" min="10" max="5000" step="10" value="200" />
+          </div>
+
+          <div id="toolStatus" class="tool-status"></div>
+
+          <button id="settingsRefreshTools" class="ghost-button" type="button">Araçları yeniden tara</button>
+        </section>
+      </div>
+    </section>
   </main>
 
   <footer class="app-footer">
     <span id="footerEndpoint">Sky</span>
     <span id="footerTools">Araçlar denetleniyor</span>
+    <button id="footerOpenFolder" class="link-button" type="button">Çıktı klasörü</button>
     <span id="footerOutput">Çıktı klasörü yükleniyor</span>
   </footer>
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <div id="shortcutHint" class="shortcut-hint">
+    <kbd>Ctrl</kbd>+<kbd>V</kbd> yapıştır · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> başlat · <kbd>Ctrl</kbd>+<kbd>,</kbd> ayarlar
+  </div>
 
   <script src="renderer.js"></script>
 </body>

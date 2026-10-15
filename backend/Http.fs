@@ -132,6 +132,25 @@ module Http =
                 return 0L
         }
 
+    let getStream (url: string) (token: CancellationToken) =
+        task {
+            try
+                use request = createRequest HttpMethod.Get url
+                use! response = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token)
+
+                if response.IsSuccessStatusCode then
+                    let! bytes = response.Content.ReadAsByteArrayAsync(token)
+
+                    if bytes.LongLength <= 8L * 1024L * 1024L then
+                        return Some bytes
+                    else
+                        return None
+                else
+                    return None
+            with _ ->
+                return None
+        }
+
     let probeSize (url: string) (headers: (string * string) list) (token: CancellationToken) =
         task {
             try

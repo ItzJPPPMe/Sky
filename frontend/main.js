@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, clipboard, Notification } = require('electron');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -262,6 +262,34 @@ function registerHandlers() {
     return { ok: failure === null, data: result.data, error: failure ? failure.message : null };
   });
 
+  ipcMain.handle('sky:tools/refresh', async () => {
+    const result = await request('POST', '/api/tools/refresh');
+    const failure = toFailure(result);
+
+    return { ok: failure === null, data: result.data, error: failure ? failure.message : null };
+  });
+
+  ipcMain.handle('sky:settings:get', async () => {
+    const result = await request('GET', '/api/settings');
+    const failure = toFailure(result);
+
+    return { ok: failure === null, data: result.data, error: failure ? failure.message : null };
+  });
+
+  ipcMain.handle('sky:settings:save', async (_event, payload) => {
+    const result = await request('POST', '/api/settings', payload);
+    const failure = toFailure(result);
+
+    return { ok: failure === null, data: result.data, error: failure ? failure.message : null };
+  });
+
+  ipcMain.handle('sky:settings/reset', async () => {
+    const result = await request('POST', '/api/settings/reset');
+    const failure = toFailure(result);
+
+    return { ok: failure === null, data: result.data, error: failure ? failure.message : null };
+  });
+
   ipcMain.handle('sky:resolve', async (_event, payload) => {
     const result = await request('POST', '/api/resolve', payload);
     const failure = toFailure(result);
@@ -348,6 +376,55 @@ function registerHandlers() {
     }
 
     return { ok: false };
+  });
+
+  ipcMain.handle('sky:shell:open', async (_event, target) => {
+    let candidate = typeof target === 'string' ? target : '';
+
+    if (candidate.length === 0) {
+      candidate = outputDirectory;
+    }
+
+    if (candidate.length === 0) {
+      return { ok: false };
+    }
+
+    const error = await shell.openPath(candidate);
+
+    return { ok: error === '' };
+  });
+
+  ipcMain.handle('sky:clipboard:write', async (_event, target) => {
+    if (typeof target !== 'string' || target.length === 0) {
+      return { ok: false };
+    }
+
+    clipboard.writeText(target);
+    return { ok: true };
+  });
+
+  ipcMain.handle('sky:notify', async (_event, payload) => {
+    if (!Notification.isSupported()) {
+      return { ok: false };
+    }
+
+    const notification = new Notification({
+      title: payload && payload.title ? String(payload.title) : 'Sky',
+      body: payload && payload.body ? String(payload.body) : ''
+    });
+
+    notification.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+        }
+
+        mainWindow.focus();
+      }
+    });
+
+    notification.show();
+    return { ok: true };
   });
 }
 

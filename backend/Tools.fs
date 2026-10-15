@@ -27,11 +27,18 @@ module Tools =
         |> List.filter (fun path -> File.Exists path)
 
     let private candidatePaths (name: string) (configuredPath: string) =
-        let explicitPaths =
-            if String.IsNullOrWhiteSpace configuredPath then
-                []
+        let fromEnvironment =
+            if name = "yt-dlp" then
+                [ config.YtDlpPath ]
+            elif name = "ffmpeg" then
+                [ config.FfMpegPath ]
             else
-                [ configuredPath ]
+                []
+
+        let explicitPaths =
+            [ Guard.text configuredPath ]
+            @ fromEnvironment
+            |> List.filter (fun path -> not (String.IsNullOrWhiteSpace path))
         let bundled =
             existingFiles
                 [ Path.Combine(AppContext.BaseDirectory, "tools", name + suffix)

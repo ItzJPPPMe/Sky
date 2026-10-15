@@ -234,7 +234,7 @@ type RateLimiter(limitBytesPerSecond: int64) =
 
     member _.Limit = limitBytesPerSecond
 
-    member this.ConsumeAsync (count: int64) (token: CancellationToken) =
+    member this.ConsumeAsync(count: int64, token: CancellationToken) =
         task {
             if limitBytesPerSecond <= 0L || count <= 0L then
                 return ()
@@ -260,7 +260,6 @@ type RateLimiter(limitBytesPerSecond: int64) =
                         refill ()
                         credits <- credits - count)
 
-                // this
                 return ()
         }
 

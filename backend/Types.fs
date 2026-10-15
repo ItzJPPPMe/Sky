@@ -507,7 +507,7 @@ module DownloadRequest =
                 if not (Guard.isHttp uri) then
                     errors.Add "Yayın linki http veya https ile başlamalıdır."
 
-        if request.SegmentConcurrency < 1 || request.SegmentConcurrency > 64 then
+        if request.SegmentConcurrency > 64 then
             errors.Add "Eşzamanlılık değeri 1 ile 64 arasında olmalıdır."
 
         List.ofSeq errors

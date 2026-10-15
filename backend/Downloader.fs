@@ -21,7 +21,7 @@ module Downloader =
           OutputPath: string
           Cancel: CancellationTokenSource }
 
-    type private ProgressTracker() =
+    type private ProgressTracker(limiter: RateLimiter) =
         let mutable bytesDownloaded = 0L
         let mutable segmentsCompleted = 0L
         let mutable segmentsTotal = 0L
@@ -29,6 +29,9 @@ module Downloader =
 
         member _.AddBytes(count: int64) =
             Interlocked.Add(&bytesDownloaded, count) |> ignore
+
+        member _.ConsumeAsync(count: int64, token: CancellationToken) =
+            limiter.ConsumeAsync(count, token)
 
         member _.AddSegment() =
             Interlocked.Increment(&segmentsCompleted) |> ignore
@@ -272,6 +275,7 @@ module Downloader =
 
                 match single with
                 | Ok count ->
+                    do! tracker.ConsumeAsync(count, token)
                     tracker.AddBytes count
                     tracker.SetSegmentsTotal 1
                     return Ok count
@@ -305,6 +309,7 @@ module Downloader =
                                         stream.Write(chunk, 0, chunk.Length))
 
                                     let chunkSizeInBytes = int64 chunk.LongLength
+                                    do! tracker.ConsumeAsync(chunkSizeInBytes, token)
                                     tracker.AddBytes chunkSizeInBytes
                                     tracker.AddSegment()
                                 | Error message ->
@@ -396,6 +401,7 @@ module Downloader =
                                     | _ ->
                                         ()
 
+                                    do! tracker.ConsumeAsync(size, token)
                                     tracker.AddBytes size
                                     tracker.AddSegment()
                                 | Error message ->
@@ -550,7 +556,13 @@ module Downloader =
                   DurationSeconds = runtime.Resolution.DurationSeconds
                   CompletedAtUtc = DateTimeOffset.UtcNow }
 
-            lock historyLock (fun () -> historyEntries.Insert(0, entry))
+            lock historyLock (fun () ->
+                historyEntries.Insert(0, entry)
+
+                let limit = (settings ()).HistoryLimit
+
+                while historyEntries.Count > limit do
+                    historyEntries.RemoveAt(historyEntries.Count - 1))
 
             publish
                 { Kind = ProgressEventKind.finished
@@ -700,8 +712,9 @@ module Downloader =
             let token = runtime.Cancel.Token
             let current = runtime.OutputPath
             let isTransportStream = String.Equals(Path.GetExtension current, ".ts", StringComparison.OrdinalIgnoreCase)
+            let remuxEnabled = (settings ()).AutoRemuxToMp4
 
-            if not isTransportStream then
+            if not isTransportStream || not remuxEnabled then
                 return Ok(runtime, String.Empty)
             else
                 patchStatus runtime.Status.Id (fun status ->
@@ -733,7 +746,7 @@ module Downloader =
     let private executeJob (runtime: JobRuntime) =
         task {
             let token = runtime.Cancel.Token
-            let tracker = ProgressTracker()
+            let tracker = ProgressTracker(RateLimiter(Sky.AppSettings.speedLimitBytes ()))
             use tickerSource = new CancellationTokenSource()
 
             patchStatus runtime.Status.Id (fun status ->
@@ -792,38 +805,26 @@ module Downloader =
                 tickerSource.Cancel()
         }
 
-    let private background (runtime: JobRuntime) =
-        task {
-            try
-                do! executeJob runtime
-            with
-            | :? OperationCanceledException ->
-                cancelJobInternal runtime.Status.Id
-            | ex ->
-                failJob runtime.Status.Id ex.Message
-
-            pumpQueue ()
-        }
-
     let private activeJobCount () =
+        let running = [ DownloadState.resolving; DownloadState.downloading; DownloadState.merging; DownloadState.muxing ]
+
         runtimes.Values
-        |> Seq.filter (fun runtime -> DownloadState.isActive runtime.Status.State)
+        |> Seq.filter (fun runtime -> running |> List.contains runtime.Status.State)
         |> Seq.length
 
-    let private runner = ref (fun (_: JobRuntime) -> ())
-
-    let private pumpQueue () =
+    let rec private pumpQueue () =
         let limit = (settings ()).MaxParallelJobs
         let mutable running = activeJobCount ()
         let mutable progressed = true
 
         while running < limit && progressed do
             progressed <- false
+            let mutable dequeuedId = String.Empty
 
-            if queue.TryDequeue(out let id) then
+            if queue.TryDequeue(&dequeuedId) then
                 progressed <- true
 
-                match runtimes.TryGetValue id with
+                match runtimes.TryGetValue dequeuedId with
                 | true, runtime when runtime.Status.State = DownloadState.queued ->
                     let fresh =
                         { runtime with
@@ -839,16 +840,26 @@ module Downloader =
 
                     store fresh |> ignore
                     publishStatus ProgressEventKind.status fresh.Status
-                    (!runner) fresh
+                    startRuntime fresh
                     running <- running + 1
                 | _ ->
                     ()
 
-    do
-        runner
-        <-
-            (fun runtime ->
-                Task.Run(Func<Task>(fun () -> background runtime)) |> ignore)
+    and private startRuntime (runtime: JobRuntime) =
+        Task.Run(Func<Task>(fun () -> background runtime)) |> ignore
+
+    and private background (runtime: JobRuntime) =
+        task {
+            try
+                do! executeJob runtime
+            with
+            | :? OperationCanceledException ->
+                cancelJobInternal runtime.Status.Id
+            | ex ->
+                failJob runtime.Status.Id ex.Message
+
+            pumpQueue ()
+        }
 
     let private sanitizeFileName (value: string) =
         let invalid = Path.GetInvalidFileNameChars()
@@ -944,7 +955,10 @@ module Downloader =
                             else
                                 requested
 
-                        let fileName = sanitizeFileName baseName
+                        let template = (settings ()).FileNameTemplate
+                        let withTemplate = AppSettings.fileNameFor template baseName resolution.Platform (quality.Label) (containerOf quality)
+                        let fileName = if String.IsNullOrWhiteSpace requested then withTemplate else sanitizeFileName baseName
+
                         let outputPath = uniqueOutputPath outputDirectory fileName (containerOf quality)
                         let segmentDirectory = Path.Combine(outputDirectory, String.Concat(".sky-", id))
                         Directory.CreateDirectory segmentDirectory |> ignore
@@ -980,7 +994,8 @@ module Downloader =
                         store runtime |> ignore
                         publishStatus ProgressEventKind.status status
 
-                        Task.Run(Func<Task>(fun () -> background runtime)) |> ignore
+                        queue.Enqueue id
+                        pumpQueue ()
 
                         return Ok status
         }

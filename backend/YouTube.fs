@@ -340,6 +340,40 @@ module YouTube =
         with ex ->
             Error(String.Format("YouTube verisi okunamadı: {0}", ex.Message))
 
+    let private videoIdOf (url: string) =
+        match Guard.tryUri url with
+        | None ->
+            ""
+        | Some uri ->
+            let host = uri.Host.ToLowerInvariant()
+            let path = uri.AbsolutePath
+
+            if host.EndsWith("youtu.be", StringComparison.Ordinal) then
+                path.Trim('/')
+            else
+                let fromQuery =
+                    match System.Web.HttpUtility.ParseQueryString(uri.Query)["v"] with
+                    | null -> ""
+                    | value -> Guard.trimmed value
+
+                if fromQuery.Length > 0 then
+                    fromQuery
+                else
+                    let segments = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries)
+
+                    match segments with
+                    | [| "shorts"; id |] -> id
+                    | [| "embed"; id |] -> id
+                    | [| "live"; id |] -> id
+                    | [| "v"; id |] -> id
+                    | _ -> ""
+
+    let private thumbnailFor (videoId: string) =
+        if String.IsNullOrWhiteSpace videoId then
+            ""
+        else
+            String.Concat("https://i.ytimg.com/vi/", videoId, "/hqdefault.jpg")
+
     let toolStatus () =
         task {
             let! statuses = Tools.toolStatuses()
@@ -351,15 +385,24 @@ module YouTube =
             let! tool = Tools.ytdlp()
 
             match tool with
-            | None -> return Error(Tools.toolRequiredMessage "yt-dlp")
+            | None ->
+                return Error(Tools.toolRequiredMessage "yt-dlp")
             | Some(invocation, _) ->
                 let! output = Tools.capture invocation (argumentsFor link.Url) 120000
 
                 match output with
                 | Error message -> return Error(errorMessage message)
                 | Ok payload ->
-                    return
-                        match payload.TrimStart().StartsWith("{", StringComparison.Ordinal) with
-                        | true -> parsePayload payload
-                        | false -> Error(errorMessage payload)
+                    if not (payload.TrimStart().StartsWith("{", StringComparison.Ordinal)) then
+                        return Error(errorMessage payload)
+                    else
+                        let parsed = parsePayload payload
+
+                        match parsed with
+                        | Error message ->
+                            return Error message
+                        | Ok resolution ->
+                            let thumbnail = thumbnailFor (videoIdOf link.Url)
+
+                            return Ok { resolution with ThumbnailUrl = thumbnail }
         }

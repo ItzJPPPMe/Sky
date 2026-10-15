@@ -144,6 +144,85 @@ module Program =
         app.MapGet("/api/platforms", Func<IResult>(fun () -> Results.Ok(Resolvers.platforms()))) |> ignore
 
         app.MapGet(
+            "/api/settings",
+            Func<IResult>(fun () ->
+                let current = AppSettings.load ()
+
+                Results.Ok
+                    {| settings = current
+                       settingsPath = AppSettings.filePath |> Guard.text
+                       defaultOutputDirectory = (DownloaderConfig.defaultConfig ()).OutputDirectory |> Guard.text
+                       segments = Resolvers.platforms () |})
+        )
+        |> ignore
+
+        app.MapPost(
+            "/api/settings",
+            Func<Settings, Task<IResult>>(fun payload ->
+                task {
+                    if isNull (box payload) then
+                        return failure "Ayar gövdesi okunamadı."
+                    else
+                        let saved = AppSettings.save payload
+                        Tools.invalidate ()
+                        do! Sessions.purge ()
+                        Sessions.purge () |> ignore
+                        return Results.Ok {| settings = saved |}
+                })
+        )
+        |> ignore
+
+        app.MapPost(
+            "/api/settings/reset",
+            Func<Task<IResult>>(fun () ->
+                task {
+                    let saved = AppSettings.reset ()
+                    Tools.invalidate ()
+                    return Results.Ok {| settings = saved |}
+                })
+        )
+        |> ignore
+
+        app.MapPost(
+            "/api/tools/refresh",
+            Func<Task<IResult>>(fun () ->
+                task {
+                    Tools.invalidate ()
+
+                    let! statuses = Resolvers.toolStatuses ()
+                    return Results.Ok statuses
+                })
+        )
+        |> ignore
+
+        app.MapGet(
+            "/api/thumbnail",
+            Func<string, Task<IResult>>(fun url ->
+                task {
+                    let safe = Guard.trimmed url
+
+                    if String.IsNullOrWhiteSpace safe then
+                        return Results.NotFound()
+                    else
+                        match Guard.tryUri safe with
+                        | None -> return Results.NotFound()
+                        | Some uri ->
+                            if uri.Scheme <> Uri.UriSchemeHttps && uri.Scheme <> Uri.UriSchemeHttp then
+                                return Results.NotFound()
+                            else
+                                let! content = Http.getStream safe CancellationToken.None
+
+                                match content with
+                                | Some bytes ->
+                                    let payload: byte[] = bytes
+                                    return Results.File(payload, contentType = "image/jpeg")
+                                | None ->
+                                    return Results.NotFound()
+                })
+        )
+        |> ignore
+
+        app.MapGet(
             "/api/tools",
             Func<Task<IResult>>(fun () ->
                 task {
